@@ -1,1 +1,136 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lake Massapoag Enhanced Live Dashboard</title><style>body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#0f172a;color:#e2e8f0}.container{max-width:1300px;margin:auto;padding:20px}.card{background:#1e293b;border-radius:12px;padding:16px;margin:12px 0}table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #475569;text-align:left}th{background:#334155}.good{color:#4ade80}.warn{color:#facc15}.bad{color:#f87171}.maps{display:grid;grid-template-columns:1fr 1fr;gap:12px}iframe{width:100%;height:500px;border:0;border-radius:8px}button{padding:8px 12px;border-radius:6px}.meta{color:#94a3b8}@media(max-width:900px){.maps{grid-template-columns:1fr}}</style></head><body><div class="container"><h1 id="title">Lake Massapoag Sailing Dashboard</h1><div class="meta">Loaded: <span id="loaded"></span> <button onclick="location.reload()">Refresh</button></div><div class="card"><h2>Status</h2><div id="status">Loading...</div></div><div class="card"><h2>Race Window Forecast (Today Only: 11:30 AM–3:00 PM)</h2><table id="forecast"><tr><th>Time</th><th>Direction</th><th>Wind</th><th>Gust</th><th>Temp</th><th>Precip</th></tr></table></div><div class="card"><h2>Expected Lake Effects</h2><div id="lake">Loading...</div></div><div class="card"><h2>MC Scow Tuning Recommendations</h2><div id="tuning">Loading...</div></div><div class="card"><h2>Radar and Wind Maps</h2><div class="maps"><iframe src="https://embed.windy.com/embed2.html?lat=42.123&lon=-71.178&zoom=9&overlay=radar"></iframe><iframe src="https://embed.windy.com/embed2.html?lat=42.123&lon=-71.178&zoom=9&overlay=wind"></iframe></div></div></div><script>const now=new Date();document.getElementById('loaded').textContent=now.toLocaleString();document.getElementById('title').textContent='Lake Massapoag Sailing Dashboard - Race Date: '+now.toLocaleDateString();const lat=42.123,lon=-71.178;const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];const dir=d=>dirs[Math.round(d/22.5)%16];Promise.all([fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&forecast_days=1&hourly=temperature_2m,precipitation_probability,wind_speed_10m,wind_gusts_10m,wind_direction_10m&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=America/New_York`).then(r=>r.json()),fetch(`https://api.weather.gov/points/${lat},${lon}`).then(r=>r.json()).then(p=>fetch(p.properties.forecastHourly).then(r=>r.json())).catch(()=>null)]).then(([om,nws])=>{const tbl=document.getElementById('forecast');const today=new Date().toLocaleDateString('en-CA');let idx=[];for(let i=0;i<om.hourly.time.length;i++){const dt=new Date(om.hourly.time[i]);if(dt.toLocaleDateString('en-CA')===today){const h=dt.getHours()+dt.getMinutes()/60;if(h>=11.5&&h<=15)idx.push(i);}}let avg=0,maxG=0,maxP=0,firstDir='SW';idx.forEach(i=>{avg+=om.hourly.wind_speed_10m[i];maxG=Math.max(maxG,om.hourly.wind_gusts_10m[i]);maxP=Math.max(maxP,om.hourly.precipitation_probability[i]||0);firstDir=dir(om.hourly.wind_direction_10m[i]);tbl.innerHTML+=`<tr><td>${new Date(om.hourly.time[i]).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</td><td>${dir(om.hourly.wind_direction_10m[i])}</td><td>${om.hourly.wind_speed_10m[i].toFixed(1)} mph</td><td>${om.hourly.wind_gusts_10m[i].toFixed(1)} mph</td><td>${Math.round(om.hourly.temperature_2m[i])}°F</td><td>${om.hourly.precipitation_probability[i]||0}%</td></tr>`});avg=idx.length?avg/idx.length:0;let nwsText='NWS hourly unavailable';if(nws?.properties?.periods?.length){const p=nws.properties.periods[0];nwsText=`NWS Reference: ${p.windSpeed} ${p.windDirection}`;}let cls='good',status='GO';if(maxG>20||maxP>80){status='NO-GO';cls='bad';}else if(maxG>15||maxP>50){status='MARGINAL';cls='warn';}document.getElementById('status').innerHTML=`<h3 class="${cls}">${status}</h3><p>Race-window average wind: ${avg.toFixed(1)} mph</p><p>Max gust: ${maxG.toFixed(1)} mph</p><p>${nwsText}</p><p>Consensus: Open-Meteo forecast with NWS validation.</p>`;let lake='';if(avg<4){lake='Very light-air conditions. Thermal circulations and shoreline effects dominate. Expect major oscillations, soft spots, and migrating pressure lines.';}else if(firstDir.includes('SW')||firstDir.includes('SSW')||firstDir==='S'){lake='South to southwest flow often creates uneven pressure on Massapoag, with stronger bands crossing the center and shifts near shorelines.';}else if(firstDir.startsWith('W')){lake='Westerly flow generally produces the most reliable racing breeze with pressure strongest through the center of the lake.';}else{lake='Expect significant shoreline bending and localized velocity differences.';}document.getElementById('lake').innerHTML=lake;let tune='';if(avg<4){tune='<ul><li>Maximum power setup</li><li>Outhaul eased</li><li>Vang off</li><li>Cunningham off</li><li>Crew forward</li></ul>';}else if(avg<8){tune='<ul><li>Full power</li><li>Light vang</li><li>Traveler centered</li></ul>';}else if(avg<14){tune='<ul><li>Base tuning</li><li>Moderate vang</li><li>Flat trim</li></ul>';}else if(avg<20){tune='<ul><li>Depower gradually</li><li>Increase control tension</li><li>Hike hard</li></ul>';}else{tune='<ul><li>Heavy-air setup</li><li>Maximum depower</li></ul>';}document.getElementById('tuning').innerHTML=tune;});</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Lake Massapoag Enhanced Live Dashboard</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Segoe UI, Arial, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: auto;
+            padding: 20px
+        }
+
+        .card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 12px 0
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse
+        }
+
+        th,
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #475569;
+            text-align: left
+        }
+
+        th {
+            background: #334155
+        }
+
+        .good {
+            color: #4ade80
+        }
+
+        .warn {
+            color: #facc15
+        }
+
+        .bad {
+            color: #f87171
+        }
+
+        .maps {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px
+        }
+
+        iframe {
+            width: 100%;
+            height: 500px;
+            border: 0;
+            border-radius: 8px
+        }
+
+        button {
+            padding: 8px 12px;
+            border-radius: 6px
+        }
+
+        .meta {
+            color: #94a3b8
+        }
+
+        @media(max-width:900px) {
+            .maps {
+                grid-template-columns: 1fr
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 id="title">Lake Massapoag Sailing Dashboard</h1>
+        <div class="meta">
+  Loaded: <span id="loaded"></span>
+
+  <button onclick="location.reload()">
+    Refresh
+  </button>
+
+  <button onclick="window.location.href='forecast.html'">
+    Detailed Forecast
+  </button>
+</div>
+        <div class="card">
+            <h2>Status</h2>
+            <div id="status">Loading...</div>
+        </div>
+        <div class="card">
+            <h2>Race Window Forecast (Today Only: 11:30 AM–3:00 PM)</h2>
+            <table id="forecast">
+                <tr>
+                    <th>Time</th>
+                    <th>Direction</th>
+                    <th>Wind</th>
+                    <th>Gust</th>
+                    <th>Temp</th>
+                    <th>Precip</th>
+                </tr>
+            </table>
+        </div>
+        <div class="card">
+            <h2>Expected Lake Effects</h2>
+            <div id="lake">Loading...</div>
+        </div>
+        <div class="card">
+            <h2>MC Scow Tuning Recommendations</h2>
+            <div id="tuning">Loading...</div>
+        </div>
+        <div class="card">
+            <h2>Radar and Wind Maps</h2>
+            <div class="maps"><iframe
+                    src="https://embed.windy.com/embed2.html?lat=42.123&lon=-71.178&zoom=9&overlay=radar"></iframe><iframe
+                    src="https://embed.windy.com/embed2.html?lat=42.123&lon=-71.178&zoom=9&overlay=wind"></iframe></div>
+        </div>
+    </div>
+    <script>const now = new Date(); document.getElementById('loaded').textContent = now.toLocaleString(); document.getElementById('title').textContent = 'Lake Massapoag Sailing Dashboard - Race Date: ' + now.toLocaleDateString(); const lat = 42.123, lon = -71.178; const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']; const dir = d => dirs[Math.round(d / 22.5) % 16]; Promise.all([fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&forecast_days=1&hourly=temperature_2m,precipitation_probability,wind_speed_10m,wind_gusts_10m,wind_direction_10m&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=America/New_York`).then(r => r.json()), fetch(`https://api.weather.gov/points/${lat},${lon}`).then(r => r.json()).then(p => fetch(p.properties.forecastHourly).then(r => r.json())).catch(() => null)]).then(([om, nws]) => { const tbl = document.getElementById('forecast'); const today = new Date().toLocaleDateString('en-CA'); let idx = []; for (let i = 0; i < om.hourly.time.length; i++) { const dt = new Date(om.hourly.time[i]); if (dt.toLocaleDateString('en-CA') === today) { const h = dt.getHours() + dt.getMinutes() / 60; if (h >= 11.5 && h <= 15) idx.push(i); } } let avg = 0, maxG = 0, maxP = 0, firstDir = 'SW'; idx.forEach(i => { avg += om.hourly.wind_speed_10m[i]; maxG = Math.max(maxG, om.hourly.wind_gusts_10m[i]); maxP = Math.max(maxP, om.hourly.precipitation_probability[i] || 0); firstDir = dir(om.hourly.wind_direction_10m[i]); tbl.innerHTML += `<tr><td>${new Date(om.hourly.time[i]).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td><td>${dir(om.hourly.wind_direction_10m[i])}</td><td>${om.hourly.wind_speed_10m[i].toFixed(1)} mph</td><td>${om.hourly.wind_gusts_10m[i].toFixed(1)} mph</td><td>${Math.round(om.hourly.temperature_2m[i])}°F</td><td>${om.hourly.precipitation_probability[i] || 0}%</td></tr>` }); avg = idx.length ? avg / idx.length : 0; let nwsText = 'NWS hourly unavailable'; if (nws?.properties?.periods?.length) { const p = nws.properties.periods[0]; nwsText = `NWS Reference: ${p.windSpeed} ${p.windDirection}`; } let cls = 'good', status = 'GO'; if (maxG > 20 || maxP > 80) { status = 'NO-GO'; cls = 'bad'; } else if (maxG > 15 || maxP > 50) { status = 'MARGINAL'; cls = 'warn'; } document.getElementById('status').innerHTML = `<h3 class="${cls}">${status}</h3><p>Race-window average wind: ${avg.toFixed(1)} mph</p><p>Max gust: ${maxG.toFixed(1)} mph</p><p>${nwsText}</p><p>Consensus: Open-Meteo forecast with NWS validation.</p>`; let lake = ''; if (avg < 4) { lake = 'Very light-air conditions. Thermal circulations and shoreline effects dominate. Expect major oscillations, soft spots, and migrating pressure lines.'; } else if (firstDir.includes('SW') || firstDir.includes('SSW') || firstDir === 'S') { lake = 'South to southwest flow often creates uneven pressure on Massapoag, with stronger bands crossing the center and shifts near shorelines.'; } else if (firstDir.startsWith('W')) { lake = 'Westerly flow generally produces the most reliable racing breeze with pressure strongest through the center of the lake.'; } else { lake = 'Expect significant shoreline bending and localized velocity differences.'; } document.getElementById('lake').innerHTML = lake; let tune = ''; if (avg < 4) { tune = '<ul><li>Maximum power setup</li><li>Outhaul eased</li><li>Vang off</li><li>Cunningham off</li><li>Crew forward</li></ul>'; } else if (avg < 8) { tune = '<ul><li>Full power</li><li>Light vang</li><li>Traveler centered</li></ul>'; } else if (avg < 14) { tune = '<ul><li>Base tuning</li><li>Moderate vang</li><li>Flat trim</li></ul>'; } else if (avg < 20) { tune = '<ul><li>Depower gradually</li><li>Increase control tension</li><li>Hike hard</li></ul>'; } else { tune = '<ul><li>Heavy-air setup</li><li>Maximum depower</li></ul>'; } document.getElementById('tuning').innerHTML = tune; });</script>
+</body>
+
+</html>

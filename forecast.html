@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lake Massapoag 7-Day Hourly Forecast</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#08121f;--card:#172536;--border:#30435b;--text:#f5f8fc;--muted:#a9bad3;}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Arial,sans-serif}
+.container{max-width:1600px;margin:auto;padding:20px}
+header{text-align:center;margin-bottom:20px}.subtitle,.status,footer{color:var(--muted)}
+.controls{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:15px}
+button{background:#1976d2;color:#fff;border:none;border-radius:6px;padding:10px 16px;cursor:pointer}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:15px;margin-bottom:20px}
+.chart-container{height:340px}.chart-wrap{position:relative;height:340px}
+#arrowCanvas{position:absolute;inset:0;pointer-events:none}
+.legend{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:13px}
+footer{text-align:center;margin-top:20px;font-size:12px}
+</style></head><body><div class="container">
+<header><h1>Lake Massapoag Hourly Forecast</h1><div class="subtitle">Open-Meteo 7-Day Hourly Forecast</div>
+<div class="controls"><button onclick="loadForecast()">Refresh Forecast</button><button onclick="location.href='index.html'">Return to Dashboard</button></div>
+<div id="status" class="status">Loading...</div></header>
+<div class="card"><h2>Wind Speed, Gusts & Direction (mph)</h2><div class="chart-wrap"><canvas id="windChart"></canvas><canvas id="arrowCanvas"></canvas></div>
+<div class="legend"><span style="color:#4caf50">■ 0-7 mph</span><span style="color:#2196f3">■ 8-14 mph</span><span style="color:#ffc107">■ 15-21 mph</span><span style="color:#ff9800">■ 22-24 mph</span><span style="color:#f44336">■ 25+ mph</span></div></div>
+<div class="card"><h2>Temperature (°F)</h2><div class="chart-container"><canvas id="tempChart"></canvas></div></div>
+<div class="card"><h2>Precipitation Probability (%)</h2><div class="chart-container"><canvas id="rainChart"></canvas></div></div>
+<footer>Lake Massapoag Forecast | Open-Meteo | Auto Refresh Every 15 Minutes</footer></div>
+<script>
+const LAT=42.1237,LON=-71.1789;let windChart,tempChart,rainChart;
+function destroyCharts(){if(windChart)windChart.destroy();if(tempChart)tempChart.destroy();if(rainChart)rainChart.destroy();}
+function degreesToCompass(d){const a=['N','NE','E','SE','S','SW','W','NW','N'];return a[Math.round(d/45)]}
+function formatLabels(t){return t.map(x=>new Date(x).toLocaleString([],{month:'numeric',day:'numeric',hour:'numeric'}));}
+function getWindColor(s){if(s<=7)return '#4caf50'; if(s<=14)return '#2196f3'; if(s<=21)return '#ffc107'; if(s<=24)return '#ff9800'; return '#f44336';}
+function drawArrow(ctx,x,y,dir,speed){const c=getWindColor(speed);ctx.save();ctx.translate(x,y);ctx.rotate((dir+180)*Math.PI/180);ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-10);ctx.stroke();ctx.beginPath();ctx.moveTo(0,-10);ctx.lineTo(-4,-5);ctx.lineTo(4,-5);ctx.closePath();ctx.fill();ctx.restore();}
+function drawOverlayArrows(chart,directions,winds){const canvas=document.getElementById('arrowCanvas');const rect=chart.canvas.getBoundingClientRect();canvas.width=rect.width;canvas.height=rect.height;const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);for(let i=0;i<winds.length;i+=3){const x=chart.scales.x.getPixelForValue(i);const y=chart.scales.y.getPixelForValue(winds[i])-20;drawArrow(ctx,x,y,directions[i],winds[i]);}}
+async function loadForecast(){try{document.getElementById('status').textContent='Loading forecast...';const url=`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,temperature_2m,precipitation_probability&forecast_days=7&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York`;const r=await fetch(url);const data=await r.json();const times=data.hourly.time;const labels=formatLabels(times);const wind=data.hourly.wind_speed_10m||[];const gust=data.hourly.wind_gusts_10m||Array(times.length).fill(0);const direction=data.hourly.wind_direction_10m||[];const temp=data.hourly.temperature_2m||[];const rain=data.hourly.precipitation_probability||Array(times.length).fill(0);destroyCharts();windChart=new Chart(document.getElementById('windChart'),{type:'line',data:{labels,datasets:[{label:'Wind',data:wind,borderColor:'#4fc3f7',backgroundColor:'rgba(79,195,247,.15)',fill:true,borderWidth:3,pointRadius:0,tension:.25},{label:'Gusts',data:gust,borderColor:'#ff9800',borderDash:[8,4],pointRadius:0,tension:.25}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{tooltip:{callbacks:{afterBody:function(items){const i=items[0].dataIndex;return [`Direction: ${Math.round(direction[i])}° (${degreesToCompass(direction[i])})`];}}}}}});drawOverlayArrows(windChart,direction,wind);tempChart=new Chart(document.getElementById('tempChart'),{type:'line',data:{labels,datasets:[{label:'Temperature',data:temp,borderColor:'#66bb6a',pointRadius:0,tension:.25}]},options:{responsive:true,maintainAspectRatio:false}});rainChart=new Chart(document.getElementById('rainChart'),{type:'bar',data:{labels,datasets:[{label:'Rain Chance',data:rain,backgroundColor:'#64b5f6'}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:100}}}});document.getElementById('status').textContent='Forecast Updated: '+new Date().toLocaleString();}catch(e){document.getElementById('status').textContent='Forecast load failed.';console.error(e)}}
+loadForecast();setInterval(loadForecast,900000);
+</script></body></html>
