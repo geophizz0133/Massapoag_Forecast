@@ -57,6 +57,11 @@
   .maps{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
   .maps iframe{width:100%;height:420px;border:0;border-radius:8px;background:#000}
   .maps h3{margin:0 0 6px;font-size:.95rem;color:var(--muted)}
+  .chartwrap{width:100%;overflow-x:auto;margin-bottom:14px}
+  .chartwrap svg text{fill:var(--muted);font-size:11px;font-family:inherit}
+  .chartwrap svg text.val{fill:var(--text);font-size:10.5px;font-weight:600}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.82rem;color:var(--muted);margin:-6px 0 12px}
+  .legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px}
   footer{text-align:center;color:var(--muted);font-size:.8rem;padding:16px}
   @media (max-width:420px){main{grid-template-columns:1fr}.status-badge{font-size:1.9rem}h1{font-size:1.3rem}}
 </style>
@@ -111,6 +116,25 @@
     </table>
   </section>
 
+  <section class="card wide" id="errorCard" style="display:none"></section>
+
+  <section class="card wide">
+    <h2>Race Window Forecast <span class="muted" style="font-size:.8rem;font-weight:400">Source: Open-Meteo</span></h2>
+    <div class="chartwrap" id="raceChart"><span class="muted">Awaiting data…</span></div>
+    <div class="legend">
+      <span><i style="background:#3fa9f5"></i>Sustained</span>
+      <span><i style="background:#f39c12"></i>Gust</span>
+      <span><i style="background:var(--marg)"></i>GO limit (15 mph)</span>
+      <span><i style="background:var(--nogo)"></i>NO-GO limit (20 mph)</span>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Time</th><th>Direction</th><th>Wind</th><th>Gust</th><th>Temperature</th><th>Precipitation</th><th>Thunder</th></tr></thead>
+        <tbody id="forecastBody"><tr><td colspan="7" class="muted">Awaiting data…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="card" id="consensusCard">
     <h2>Wind Consensus</h2>
     <table>
@@ -119,18 +143,6 @@
     </table>
     <div style="margin-top:12px">Confidence: <span class="pill" id="confidence">—</span></div>
     <div class="note" id="consensusNote"></div>
-  </section>
-
-  <section class="card wide" id="errorCard" style="display:none"></section>
-
-  <section class="card wide">
-    <h2>Race Window Forecast <span class="muted" style="font-size:.8rem;font-weight:400">Source: Open-Meteo</span></h2>
-    <div class="tablewrap">
-      <table>
-        <thead><tr><th>Time</th><th>Direction</th><th>Wind</th><th>Gust</th><th>Temperature</th><th>Precipitation</th><th>Thunder</th></tr></thead>
-        <tbody id="forecastBody"><tr><td colspan="7" class="muted">Awaiting data…</td></tr></tbody>
-      </table>
-    </div>
   </section>
 
   <section class="card" id="lakeCard">
@@ -652,6 +664,44 @@ function renderTable() {
   }).join("");
 }
 
+function renderRaceChart() {
+  const el = document.getElementById("raceChart");
+  const rows = (state.om || []).filter(r => r.wind != null).sort((a, b) => a.hour - b.hour);
+  if (!rows.length) {
+    el.innerHTML = `<span class="muted">${state.omLoading ? "Awaiting data…" : "Open-Meteo data unavailable"}</span>`;
+    return;
+  }
+  const W = 900, H = 260, L = 40, R = 30, T = 22, B = 46;
+  const h0 = rows[0].hour, h1 = rows[rows.length - 1].hour;
+  const span = Math.max(h1 - h0, 1);
+  const yMax = Math.max(25, Math.ceil((maxOf(rows.map(r => r.gust)) || 0) / 5) * 5 + 5);
+  const PAD = 45;
+  const x = h => rows.length === 1 ? (L + W - R) / 2 : L + PAD + ((h - h0) / span) * (W - L - R - 2 * PAD);
+  const y = v => T + (1 - v / yMax) * (H - T - B);
+  let g = "";
+  for (let v = 0; v <= yMax; v += 5) {
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#24405f" stroke-width="1"/>
+          <text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  }
+  g += `<line x1="${L}" x2="${W - R}" y1="${y(15)}" y2="${y(15)}" stroke="var(--marg)" stroke-dasharray="5 4" stroke-width="1.5"/>`;
+  g += `<line x1="${L}" x2="${W - R}" y1="${y(20)}" y2="${y(20)}" stroke="var(--nogo)" stroke-dasharray="5 4" stroke-width="1.5"/>`;
+  const line = (key, color) => `<polyline fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"
+    points="${rows.filter(r => r[key] != null).map(r => `${x(r.hour).toFixed(1)},${y(r[key]).toFixed(1)}`).join(" ")}"/>`;
+  g += line("gust", "#f39c12") + line("wind", "#3fa9f5");
+  rows.forEach(r => {
+    const cx = x(r.hour);
+    if (r.gust != null) {
+      g += `<circle cx="${cx}" cy="${y(r.gust)}" r="3.5" fill="#f39c12"/>
+            <text class="val" x="${cx}" y="${y(r.gust) - 8}" text-anchor="middle">${Math.round(r.gust)}</text>`;
+    }
+    g += `<circle cx="${cx}" cy="${y(r.wind)}" r="4" fill="#3fa9f5"><title>${r.time}: ${degToCompass(r.dir)} ${fmt(r.wind, " mph", 1)}, gust ${fmt(r.gust, " mph", 1)}</title></circle>
+          <text class="val" x="${cx}" y="${y(r.wind) + 16}" text-anchor="middle">${Math.round(r.wind)}</text>
+          <text x="${cx}" y="${H - 24}" text-anchor="middle">${r.time}</text>
+          <text x="${cx}" y="${H - 8}" text-anchor="middle">${degToCompass(r.dir)}</text>`;
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:480px" role="img" aria-label="Race window sustained wind and gusts">${g}</svg>`;
+}
+
 function renderLake(c) {
   const confEl = document.getElementById("lakeConf");
   const g = document.getElementById("lakeGuidance");
@@ -680,6 +730,7 @@ function renderAll() {
   renderError();
   renderStatus();
   renderTable();
+  renderRaceChart();
   const c = computeConsensus();
   renderConsensus(c);
   renderLake(c);
