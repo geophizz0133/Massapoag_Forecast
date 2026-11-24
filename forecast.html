@@ -1,39 +1,459 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lake Massapoag 7-Day Hourly Forecast</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lake Massapoag Detailed Forecast</title>
 <style>
-:root{--bg:#08121f;--card:#172536;--border:#30435b;--text:#f5f8fc;--muted:#a9bad3;}
-*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Arial,sans-serif}
-.container{max-width:1600px;margin:auto;padding:20px}
-header{text-align:center;margin-bottom:20px}.subtitle,.status,footer{color:var(--muted)}
-.controls{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:15px}
-button{background:#1976d2;color:#fff;border:none;border-radius:6px;padding:10px 16px;cursor:pointer}
-.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:15px;margin-bottom:20px}
-.chart-container{height:340px}.chart-wrap{position:relative;height:340px}
-#arrowCanvas{position:absolute;inset:0;pointer-events:none}
-.legend{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:13px}
-footer{text-align:center;margin-top:20px;font-size:12px}
-</style></head><body><div class="container">
-<header><h1>Lake Massapoag Hourly Forecast</h1><div class="subtitle">Open-Meteo 7-Day Hourly Forecast</div>
-<div class="controls"><button onclick="loadForecast()">Refresh Forecast</button><button onclick="location.href='index.html'">Return to Dashboard</button></div>
-<div id="status" class="status">Loading...</div></header>
-<div class="card"><h2>Wind Speed, Gusts & Direction (mph)</h2><div class="chart-wrap"><canvas id="windChart"></canvas><canvas id="arrowCanvas"></canvas></div>
-<div class="legend"><span style="color:#4caf50">■ 0-7 mph</span><span style="color:#2196f3">■ 8-14 mph</span><span style="color:#ffc107">■ 15-21 mph</span><span style="color:#ff9800">■ 22-24 mph</span><span style="color:#f44336">■ 25+ mph</span></div></div>
-<div class="card"><h2>Temperature (°F)</h2><div class="chart-container"><canvas id="tempChart"></canvas></div></div>
-<div class="card"><h2>Precipitation Probability (%)</h2><div class="chart-container"><canvas id="rainChart"></canvas></div></div>
-<footer>Lake Massapoag Forecast | Open-Meteo | Auto Refresh Every 15 Minutes</footer></div>
+  :root{
+    --bg:#0b1724;--panel:#12243a;--panel2:#183050;--text:#e6eef7;--muted:#9fb3c8;
+    --accent:#3fa9f5;--gust:#f39c12;--go:#2ecc71;--marg:#f1c40f;--nogo:#e74c3c;--border:#24405f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}
+  header{background:linear-gradient(135deg,#0f2e4d,#123a63);padding:20px 16px;border-bottom:1px solid var(--border)}
+  .hwrap{max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+  h1{margin:0;font-size:1.6rem}
+  .sub{color:var(--muted);font-size:.92rem;margin-top:4px}
+  .sub span{color:var(--text);font-weight:600}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:.92rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn:hover{filter:brightness(1.1)}
+  .btn.secondary{background:transparent;border:1px solid var(--accent);color:var(--accent)}
+  .btn.small{padding:5px 10px;font-size:.8rem}
+  .btn:disabled{opacity:.5;cursor:wait}
+  main{max-width:1200px;margin:0 auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;min-width:0}
+  .card.wide{grid-column:1/-1}
+  .card h2{margin:0 0 12px;font-size:1.1rem;color:var(--accent);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .card h2 small{color:var(--muted);font-size:.8rem;font-weight:400}
+  .err{border-color:var(--nogo);background:#2a1418}
+  .err h2{color:var(--nogo)}
+  .alert{border-color:var(--nogo)}
+  .alert h2{color:var(--nogo)}
+  table{width:100%;border-collapse:collapse;font-size:.9rem}
+  th,td{padding:7px 6px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+  th{color:var(--muted);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.03em;position:sticky;top:0;background:var(--panel)}
+  .tablewrap{overflow-x:auto}
+  tr.race td{background:rgba(63,169,245,.10)}
+  tr.race td:first-child{border-left:3px solid var(--accent)}
+  tr.past td{opacity:.5}
+  .ok{color:var(--go)}.warn{color:var(--marg)}.bad{color:var(--nogo)}.muted{color:var(--muted)}
+  .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-weight:700;font-size:.75rem;letter-spacing:.03em}
+  .t-GO{background:rgba(46,204,113,.18);color:var(--go)}
+  .t-MARGINAL{background:rgba(241,196,15,.18);color:var(--marg)}
+  .t-NO-GO{background:rgba(231,76,60,.18);color:var(--nogo)}
+  .t-NA{background:rgba(159,179,200,.12);color:var(--muted)}
+  .days{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .day{background:var(--panel2);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:4px;border:1px solid transparent}
+  .day.today{border-color:var(--accent)}
+  .day .dname{font-weight:700}
+  .day .ddate{color:var(--muted);font-size:.8rem}
+  .day .icon{font-size:1.8rem;line-height:1.2}
+  .day .cond{font-size:.82rem;color:var(--muted);min-height:2.2em}
+  .day .row{display:flex;justify-content:space-between;font-size:.85rem}
+  .day .rw{margin-top:6px;padding-top:6px;border-top:1px solid var(--border);font-size:.78rem;color:var(--muted)}
+  .period{background:var(--panel2);border-radius:8px;padding:12px;margin-bottom:10px}
+  .period h3{margin:0 0 4px;font-size:.98rem;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .period h3 span{color:var(--muted);font-weight:400;font-size:.85rem}
+  .period p{margin:0;font-size:.9rem}
+  .chartwrap{width:100%;overflow-x:auto}
+  svg text{fill:var(--muted);font-size:11px;font-family:inherit}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.82rem;color:var(--muted);margin-top:6px}
+  .legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px}
+  .arrow{display:inline-block}
+  footer{text-align:center;color:var(--muted);font-size:.8rem;padding:16px}
+  @media (max-width:420px){main{grid-template-columns:1fr}h1{font-size:1.3rem}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hwrap">
+    <div>
+      <h1>⛵ Lake Massapoag Detailed Forecast</h1>
+      <div class="sub">Sharon, Massachusetts · 42.123, -71.178</div>
+      <div class="sub">Today's Race Window: <span id="raceWindow">—</span></div>
+      <div class="sub">Last Refresh: <span id="lastRefresh">—</span></div>
+    </div>
+    <div class="btns">
+      <a class="btn secondary" href="index.html">← Dashboard</a>
+      <button class="btn" id="refreshBtn" onclick="refreshAll()">⟳ Refresh</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="card wide alert" id="alertsCard" style="display:none"></section>
+  <section class="card wide err" id="omError" style="display:none"></section>
+
+  <section class="card wide">
+    <h2>Upcoming Race Windows <small>7-day outlook · Mon–Thu 6–9 PM · Fri–Sun 12–4 PM</small></h2>
+    <div class="days" id="days"><span class="muted">Loading…</span></div>
+  </section>
+
+  <section class="card wide">
+    <h2>Today's Wind <small>Open-Meteo · shaded area = race window</small></h2>
+    <div class="chartwrap" id="chart"><span class="muted">Loading…</span></div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>Sustained</span>
+      <span><i style="background:var(--gust)"></i>Gust</span>
+      <span><i style="background:var(--marg)"></i>GO limit (15 mph)</span>
+      <span><i style="background:var(--nogo)"></i>NO-GO limit (20 mph)</span>
+    </div>
+  </section>
+
+  <section class="card wide">
+    <h2>Today Hour by Hour <small>Race-window rows highlighted</small></h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Time</th><th>Conditions</th><th>Direction</th><th>Wind</th><th>Gust</th><th>Temp</th><th>Precip</th><th>Thunder</th><th>Status</th></tr></thead>
+        <tbody id="hourlyBody"><tr><td colspan="9" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card wide" id="nwsCard">
+    <h2>National Weather Service Forecast <button class="btn small secondary" onclick="retryNWS()">Retry</button></h2>
+    <div id="nwsBody"><span class="muted">Loading…</span></div>
+  </section>
+</main>
+<footer>Forecast data: Open-Meteo &amp; National Weather Service. Always use your own judgment on the water.</footer>
+
 <script>
-const LAT=42.1237,LON=-71.1789;let windChart,tempChart,rainChart;
-function destroyCharts(){if(windChart)windChart.destroy();if(tempChart)tempChart.destroy();if(rainChart)rainChart.destroy();}
-function degreesToCompass(d){const a=['N','NE','E','SE','S','SW','W','NW','N'];return a[Math.round(d/45)]}
-function formatLabels(t){return t.map(x=>new Date(x).toLocaleString([],{month:'numeric',day:'numeric',hour:'numeric'}));}
-function getWindColor(s){if(s<=7)return '#4caf50'; if(s<=14)return '#2196f3'; if(s<=21)return '#ffc107'; if(s<=24)return '#ff9800'; return '#f44336';}
-function drawArrow(ctx,x,y,dir,speed){const c=getWindColor(speed);ctx.save();ctx.translate(x,y);ctx.rotate((dir+180)*Math.PI/180);ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-10);ctx.stroke();ctx.beginPath();ctx.moveTo(0,-10);ctx.lineTo(-4,-5);ctx.lineTo(4,-5);ctx.closePath();ctx.fill();ctx.restore();}
-function drawOverlayArrows(chart,directions,winds){const canvas=document.getElementById('arrowCanvas');const rect=chart.canvas.getBoundingClientRect();canvas.width=rect.width;canvas.height=rect.height;const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);for(let i=0;i<winds.length;i+=3){const x=chart.scales.x.getPixelForValue(i);const y=chart.scales.y.getPixelForValue(winds[i])-20;drawArrow(ctx,x,y,directions[i],winds[i]);}}
-async function loadForecast(){try{document.getElementById('status').textContent='Loading forecast...';const url=`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,temperature_2m,precipitation_probability&forecast_days=7&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America/New_York`;const r=await fetch(url);const data=await r.json();const times=data.hourly.time;const labels=formatLabels(times);const wind=data.hourly.wind_speed_10m||[];const gust=data.hourly.wind_gusts_10m||Array(times.length).fill(0);const direction=data.hourly.wind_direction_10m||[];const temp=data.hourly.temperature_2m||[];const rain=data.hourly.precipitation_probability||Array(times.length).fill(0);destroyCharts();windChart=new Chart(document.getElementById('windChart'),{type:'line',data:{labels,datasets:[{label:'Wind',data:wind,borderColor:'#4fc3f7',backgroundColor:'rgba(79,195,247,.15)',fill:true,borderWidth:3,pointRadius:0,tension:.25},{label:'Gusts',data:gust,borderColor:'#ff9800',borderDash:[8,4],pointRadius:0,tension:.25}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{tooltip:{callbacks:{afterBody:function(items){const i=items[0].dataIndex;return [`Direction: ${Math.round(direction[i])}° (${degreesToCompass(direction[i])})`];}}}}}});drawOverlayArrows(windChart,direction,wind);tempChart=new Chart(document.getElementById('tempChart'),{type:'line',data:{labels,datasets:[{label:'Temperature',data:temp,borderColor:'#66bb6a',pointRadius:0,tension:.25}]},options:{responsive:true,maintainAspectRatio:false}});rainChart=new Chart(document.getElementById('rainChart'),{type:'bar',data:{labels,datasets:[{label:'Rain Chance',data:rain,backgroundColor:'#64b5f6'}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:100}}}});document.getElementById('status').textContent='Forecast Updated: '+new Date().toLocaleString();}catch(e){document.getElementById('status').textContent='Forecast load failed.';console.error(e)}}
-loadForecast();setInterval(loadForecast,900000);
-</script></body></html>
+"use strict";
+
+const LAT = 42.123;
+const LON = -71.178;
+const TZ = "America/New_York";
+const WEEKDAY_HOURS = [18, 19, 20, 21];
+const WEEKEND_HOURS = [12, 13, 14, 15, 16];
+
+const THRESHOLDS = {
+  wind:    { go: 15, marg: 20 },
+  gust:    { go: 20, marg: 25 },
+  precip:  { go: 50, marg: 80 },
+  thunder: { go: 20, marg: 50 }
+};
+
+const WMO = {
+  0: ["Clear", "☀️"], 1: ["Mainly clear", "🌤️"], 2: ["Partly cloudy", "⛅"], 3: ["Overcast", "☁️"],
+  45: ["Fog", "🌫️"], 48: ["Rime fog", "🌫️"],
+  51: ["Light drizzle", "🌦️"], 53: ["Drizzle", "🌦️"], 55: ["Heavy drizzle", "🌧️"],
+  56: ["Freezing drizzle", "🌧️"], 57: ["Freezing drizzle", "🌧️"],
+  61: ["Light rain", "🌦️"], 63: ["Rain", "🌧️"], 65: ["Heavy rain", "🌧️"],
+  66: ["Freezing rain", "🌧️"], 67: ["Freezing rain", "🌧️"],
+  71: ["Light snow", "🌨️"], 73: ["Snow", "🌨️"], 75: ["Heavy snow", "❄️"], 77: ["Snow grains", "🌨️"],
+  80: ["Light showers", "🌦️"], 81: ["Showers", "🌧️"], 82: ["Heavy showers", "⛈️"],
+  85: ["Snow showers", "🌨️"], 86: ["Heavy snow showers", "❄️"],
+  95: ["Thunderstorm", "⛈️"], 96: ["Thunderstorm, hail", "⛈️"], 99: ["Severe thunderstorm, hail", "⛈️"]
+};
+const wmo = c => WMO[c] || ["—", "❔"];
+
+/* ---------- Utilities ---------- */
+
+function nyParts(date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+  }).formatToParts(date);
+  const get = t => (parts.find(p => p.type === t) || {}).value;
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, hour: parseInt(get("hour"), 10) % 24 };
+}
+const todayNY = () => nyParts(new Date()).date;
+
+/* Noon UTC on a YYYY-MM-DD date falls on the same calendar day in New York. */
+const dateObj = ymd => new Date(`${ymd}T12:00:00Z`);
+
+function nyWeekday(date) {
+  return new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" }).format(date);
+}
+function getRaceHours(date = new Date()) {
+  return ["Fri", "Sat", "Sun"].includes(nyWeekday(date)) ? WEEKEND_HOURS : WEEKDAY_HOURS;
+}
+function hourLabel(h) {
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return `${hh}:00 ${h >= 12 ? "PM" : "AM"}`;
+}
+function shortHour(h) {
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return `${hh}${h >= 12 ? "p" : "a"}`;
+}
+function raceWindowLabel(date = new Date()) {
+  const h = getRaceHours(date);
+  return `${hourLabel(h[0])} – ${hourLabel(h[h.length - 1])}`;
+}
+
+const COMPASS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+const normDeg = d => ((d % 360) + 360) % 360;
+const degToCompass = d => (d == null || isNaN(d)) ? "—" : COMPASS[Math.round(normDeg(d) / 22.5) % 16];
+
+function vectorMeanDir(dirs, weights) {
+  let x = 0, y = 0, n = 0;
+  dirs.forEach((d, i) => {
+    if (d == null || isNaN(d)) return;
+    const w = weights && weights[i] != null ? Math.max(weights[i], 0.0001) : 1;
+    const r = d * Math.PI / 180;
+    x += Math.sin(r) * w; y += Math.cos(r) * w; n++;
+  });
+  if (!n || Math.hypot(x, y) < 1e-9) return null;
+  return normDeg(Math.atan2(x, y) * 180 / Math.PI);
+}
+
+const valid = a => a.filter(x => x != null && !isNaN(x));
+const maxOf = a => { const v = valid(a); return v.length ? Math.max(...v) : null; };
+const mean = a => { const v = valid(a); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
+const fmt = (v, unit, d = 0) => (v == null || isNaN(v)) ? "—" : `${Number(v).toFixed(d)}${unit}`;
+
+function dirHTML(d) {
+  if (d == null || isNaN(d)) return "—";
+  return `<span class="arrow" style="transform:rotate(${Math.round(d) + 180}deg)">↑</span> ${degToCompass(d)} ${Math.round(d)}°`;
+}
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+async function fetchJSON(url, opts = {}, timeoutMs = 15000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...opts, signal: ctrl.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    return await res.json();
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("Request timed out");
+    throw e;
+  } finally { clearTimeout(t); }
+}
+
+function omThunder(code, precip) {
+  const p = precip == null ? 0 : precip;
+  if (code === 95) return Math.max(p, 40);
+  if (code === 96 || code === 99) return Math.max(p, 70);
+  return 0;
+}
+
+function classify(v, t) {
+  if (v == null || isNaN(v)) return "GO";
+  if (v <= t.go) return "GO";
+  if (v <= t.marg) return "MARGINAL";
+  return "NO-GO";
+}
+const RANK = { "GO": 0, "MARGINAL": 1, "NO-GO": 2 };
+function overallStatus(m) {
+  return [classify(m.wind, THRESHOLDS.wind), classify(m.gust, THRESHOLDS.gust),
+          classify(m.precip, THRESHOLDS.precip), classify(m.thunder, THRESHOLDS.thunder)]
+    .reduce((a, b) => RANK[b] > RANK[a] ? b : a, "GO");
+}
+const statusTag = s => `<span class="tag t-${s}">${s}</span>`;
+
+/* ---------- Open-Meteo (7 days) ---------- */
+
+function parseOM(data) {
+  const h = data && data.hourly;
+  if (!h || !Array.isArray(h.time)) throw new Error("Malformed Open-Meteo response");
+  const hourly = h.time.map((t, i) => {
+    const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/.exec(t);
+    if (!m) return null;
+    const precip = h.precipitation_probability[i];
+    const code = h.weather_code[i];
+    return {
+      date: m[1], hour: +m[2], minute: +m[3],
+      dir: h.wind_direction_10m[i], wind: h.wind_speed_10m[i], gust: h.wind_gusts_10m[i],
+      temp: h.temperature_2m[i], precip, code, thunder: omThunder(code, precip)
+    };
+  }).filter(r => r && r.minute === 0);
+  const d = data.daily || {};
+  const daily = (d.time || []).map((date, i) => ({
+    date, code: d.weather_code[i], tmax: d.temperature_2m_max[i], tmin: d.temperature_2m_min[i],
+    precip: d.precipitation_probability_max[i], wind: d.wind_speed_10m_max[i],
+    gust: d.wind_gusts_10m_max[i], dir: d.wind_direction_10m_dominant[i]
+  }));
+  return { hourly, daily };
+}
+
+function raceRowsFor(hourly, date) {
+  const hours = getRaceHours(dateObj(date));
+  const seen = new Set();
+  return hourly
+    .filter(r => r.date === date && hours.includes(r.hour) && !seen.has(r.hour) && seen.add(r.hour))
+    .sort((a, b) => a.hour - b.hour);
+}
+
+function windowSummary(rows) {
+  if (!rows.length) return null;
+  const m = {
+    wind: maxOf(rows.map(r => r.wind)), gust: maxOf(rows.map(r => r.gust)),
+    precip: maxOf(rows.map(r => r.precip)), thunder: maxOf(rows.map(r => r.thunder))
+  };
+  m.dir = vectorMeanDir(rows.map(r => r.dir), rows.map(r => r.wind));
+  m.avg = mean(rows.map(r => r.wind));
+  m.status = overallStatus(m);
+  return m;
+}
+
+async function loadOM() {
+  const params = new URLSearchParams({
+    latitude: LAT, longitude: LON,
+    hourly: "temperature_2m,precipitation_probability,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code",
+    daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant",
+    forecast_days: "7", timezone: TZ, temperature_unit: "fahrenheit", wind_speed_unit: "mph"
+  });
+  return parseOM(await fetchJSON(`https://api.open-meteo.com/v1/forecast?${params}`));
+}
+
+/* ---------- Rendering: Open-Meteo ---------- */
+
+function renderDays(om) {
+  const today = todayNY();
+  document.getElementById("days").innerHTML = om.daily.map(d => {
+    const dt = dateObj(d.date);
+    const name = d.date === today ? "Today" : new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "long" }).format(dt);
+    const dateTxt = new Intl.DateTimeFormat("en-US", { timeZone: TZ, month: "short", day: "numeric" }).format(dt);
+    const [cond, icon] = wmo(d.code);
+    const w = windowSummary(raceRowsFor(om.hourly, d.date));
+    const rw = w
+      ? `${statusTag(w.status)}<div style="margin-top:4px">${raceWindowLabel(dt)}</div>
+         <div>${degToCompass(w.dir)} ${fmt(w.avg, "", 0)}–${fmt(w.wind, "", 0)} mph, gust ${fmt(w.gust, "", 0)}</div>`
+      : `${statusTag("NA")}<div style="margin-top:4px">${raceWindowLabel(dt)}</div>`;
+    return `<div class="day${d.date === today ? " today" : ""}">
+      <div class="dname">${name}</div><div class="ddate">${dateTxt}</div>
+      <div class="icon">${icon}</div><div class="cond">${cond}</div>
+      <div class="row"><span>${fmt(d.tmax, "°")}</span><span class="muted">${fmt(d.tmin, "°")}</span></div>
+      <div class="row"><span class="muted">Wind</span><span>${degToCompass(d.dir)} ${fmt(d.wind, "")}</span></div>
+      <div class="row"><span class="muted">Gust</span><span>${fmt(d.gust, " mph")}</span></div>
+      <div class="row"><span class="muted">Precip</span><span>${fmt(d.precip, "%")}</span></div>
+      <div class="rw">Race window<br>${rw}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderHourly(om) {
+  const today = todayNY();
+  const nowHour = nyParts(new Date()).hour;
+  const raceHours = getRaceHours(dateObj(today));
+  const rows = om.hourly.filter(r => r.date === today);
+  const cls = l => l === "GO" ? "" : l === "MARGINAL" ? "warn" : "bad";
+  document.getElementById("hourlyBody").innerHTML = rows.map(r => {
+    const s = overallStatus(r);
+    const rc = [raceHours.includes(r.hour) ? "race" : "", r.hour < nowHour ? "past" : ""].join(" ").trim();
+    const [cond, icon] = wmo(r.code);
+    return `<tr class="${rc}"><td><strong>${hourLabel(r.hour)}</strong></td><td>${icon} ${cond}</td><td>${dirHTML(r.dir)}</td>
+      <td class="${cls(classify(r.wind, THRESHOLDS.wind))}">${fmt(r.wind, " mph", 1)}</td>
+      <td class="${cls(classify(r.gust, THRESHOLDS.gust))}">${fmt(r.gust, " mph", 1)}</td>
+      <td>${fmt(r.temp, "°F")}</td>
+      <td class="${cls(classify(r.precip, THRESHOLDS.precip))}">${fmt(r.precip, "%")}</td>
+      <td class="${cls(classify(r.thunder, THRESHOLDS.thunder))}">${fmt(r.thunder, "%")}</td>
+      <td>${statusTag(s)}</td></tr>`;
+  }).join("") || `<tr><td colspan="9" class="muted">No hourly data for today</td></tr>`;
+}
+
+function renderChart(om) {
+  const today = todayNY();
+  const rows = om.hourly.filter(r => r.date === today).sort((a, b) => a.hour - b.hour);
+  if (!rows.length) { document.getElementById("chart").innerHTML = '<span class="muted">No data</span>'; return; }
+  const W = 900, H = 280, L = 40, R = 12, T = 14, B = 32;
+  const yMax = Math.max(25, Math.ceil((maxOf(rows.map(r => r.gust)) || 0) / 5) * 5 + 5);
+  const x = h => L + (h / 23) * (W - L - R);
+  const y = v => T + (1 - v / yMax) * (H - T - B);
+  const line = (key, color) => `<polyline fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"
+    points="${rows.filter(r => r[key] != null).map(r => `${x(r.hour).toFixed(1)},${y(r[key]).toFixed(1)}`).join(" ")}"/>`;
+  const rh = getRaceHours(dateObj(today));
+  let g = `<rect x="${x(rh[0])}" y="${T}" width="${x(rh[rh.length - 1]) - x(rh[0])}" height="${H - T - B}" fill="rgba(63,169,245,.15)"/>`;
+  for (let v = 0; v <= yMax; v += 5) {
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#24405f" stroke-width="1"/>
+          <text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  }
+  g += `<line x1="${L}" x2="${W - R}" y1="${y(15)}" y2="${y(15)}" stroke="var(--marg)" stroke-dasharray="5 4" stroke-width="1.5"/>`;
+  g += `<line x1="${L}" x2="${W - R}" y1="${y(20)}" y2="${y(20)}" stroke="var(--nogo)" stroke-dasharray="5 4" stroke-width="1.5"/>`;
+  for (let h = 0; h <= 23; h += 3) g += `<text x="${x(h)}" y="${H - 10}" text-anchor="middle">${shortHour(h)}</text>`;
+  g += line("gust", "var(--gust)") + line("wind", "var(--accent)");
+  rows.forEach(r => {
+    g += `<circle cx="${x(r.hour)}" cy="${y(r.wind)}" r="3" fill="var(--accent)"><title>${hourLabel(r.hour)}: ${degToCompass(r.dir)} ${fmt(r.wind, " mph", 1)}, gust ${fmt(r.gust, " mph", 1)}</title></circle>`;
+  });
+  const nowH = nyParts(new Date()).hour;
+  g += `<line x1="${x(nowH)}" x2="${x(nowH)}" y1="${T}" y2="${H - B}" stroke="var(--text)" stroke-width="1" opacity=".5"/>
+        <text x="${x(nowH) + 4}" y="${T + 10}">now</text>`;
+  document.getElementById("chart").innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:560px" role="img" aria-label="Today's sustained wind and gusts by hour">${g}</svg>`;
+}
+
+/* ---------- NWS ---------- */
+
+async function loadNWS() {
+  const headers = { Accept: "application/geo+json" };
+  const pt = await fetchJSON(`https://api.weather.gov/points/${LAT},${LON}`, { headers });
+  const url = pt && pt.properties && pt.properties.forecast;
+  if (!url) throw new Error("No forecast URL in NWS points response");
+  const fc = await fetchJSON(url, { headers });
+  const periods = fc && fc.properties && fc.properties.periods;
+  if (!Array.isArray(periods)) throw new Error("Malformed NWS forecast response");
+  return periods.slice(0, 8);
+}
+
+async function loadAlerts() {
+  const data = await fetchJSON(`https://api.weather.gov/alerts/active?point=${LAT},${LON}`, { headers: { Accept: "application/geo+json" } });
+  return (data.features || []).map(f => f.properties);
+}
+
+function renderNWS(periods) {
+  document.getElementById("nwsBody").innerHTML = periods.map(p => `
+    <div class="period">
+      <h3>${escapeHTML(p.name)} <span>${p.temperature}°${escapeHTML(p.temperatureUnit || "F")} · ${escapeHTML(p.windDirection || "")} ${escapeHTML(p.windSpeed || "")}${p.probabilityOfPrecipitation && p.probabilityOfPrecipitation.value != null ? ` · ${p.probabilityOfPrecipitation.value}% precip` : ""}</span></h3>
+      <p>${escapeHTML(p.detailedForecast || p.shortForecast || "")}</p>
+    </div>`).join("");
+}
+
+function renderAlerts(alerts) {
+  const card = document.getElementById("alertsCard");
+  if (!alerts.length) { card.style.display = "none"; return; }
+  card.style.display = "";
+  card.innerHTML = `<h2>⚠ Active Weather Alerts</h2>` + alerts.map(a => `
+    <div class="period">
+      <h3>${escapeHTML(a.event)} <span>${escapeHTML(a.severity || "")} · until ${a.ends || a.expires ? new Date(a.ends || a.expires).toLocaleString("en-US", { timeZone: TZ, weekday: "short", hour: "numeric", minute: "2-digit" }) : "further notice"}</span></h3>
+      <p>${escapeHTML(a.headline || "")}</p>
+    </div>`).join("");
+}
+
+/* ---------- Loading ---------- */
+
+async function refreshOM() {
+  const errCard = document.getElementById("omError");
+  try {
+    const om = await loadOM();
+    errCard.style.display = "none";
+    renderDays(om); renderChart(om); renderHourly(om);
+  } catch (e) {
+    console.error("[Open-Meteo] Failure:", e);
+    errCard.style.display = "";
+    errCard.innerHTML = `<h2>Open-Meteo Unavailable <button class="btn small" onclick="refreshOM()">Retry</button></h2>
+      <div>${escapeHTML(e.message || String(e))}</div>`;
+    ["days", "chart"].forEach(id => document.getElementById(id).innerHTML = '<span class="muted">Unavailable</span>');
+    document.getElementById("hourlyBody").innerHTML = '<tr><td colspan="9" class="muted">Unavailable</td></tr>';
+  }
+}
+
+async function retryNWS() {
+  document.getElementById("nwsBody").innerHTML = '<span class="muted">Loading…</span>';
+  try { renderNWS(await loadNWS()); }
+  catch (e) {
+    console.warn("[NWS] Failure:", e);
+    document.getElementById("nwsBody").innerHTML = `<span class="bad">❌ NWS Unavailable</span> <span class="muted">— ${escapeHTML(e.message || String(e))}</span>`;
+  }
+  try { renderAlerts(await loadAlerts()); }
+  catch (e) { console.warn("[NWS] Alerts unavailable:", e); }
+}
+
+async function refreshAll() {
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = true;
+  document.getElementById("raceWindow").textContent = raceWindowLabel();
+  await Promise.all([refreshOM(), retryNWS()]);
+  document.getElementById("lastRefresh").textContent =
+    new Date().toLocaleTimeString("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit", second: "2-digit" }) + " ET";
+  btn.disabled = false;
+}
+
+refreshAll();
+</script>
+</body>
+</html>

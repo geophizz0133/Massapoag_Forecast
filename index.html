@@ -1,136 +1,793 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Lake Massapoag Enhanced Live Dashboard</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Segoe UI, Arial, sans-serif;
-            background: #0f172a;
-            color: #e2e8f0
-        }
-
-        .container {
-            max-width: 1300px;
-            margin: auto;
-            padding: 20px
-        }
-
-        .card {
-            background: #1e293b;
-            border-radius: 12px;
-            padding: 16px;
-            margin: 12px 0
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse
-        }
-
-        th,
-        td {
-            padding: 8px;
-            border-bottom: 1px solid #475569;
-            text-align: left
-        }
-
-        th {
-            background: #334155
-        }
-
-        .good {
-            color: #4ade80
-        }
-
-        .warn {
-            color: #facc15
-        }
-
-        .bad {
-            color: #f87171
-        }
-
-        .maps {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px
-        }
-
-        iframe {
-            width: 100%;
-            height: 500px;
-            border: 0;
-            border-radius: 8px
-        }
-
-        button {
-            padding: 8px 12px;
-            border-radius: 6px
-        }
-
-        .meta {
-            color: #94a3b8
-        }
-
-        @media(max-width:900px) {
-            .maps {
-                grid-template-columns: 1fr
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lake Massapoag Sailing Dashboard</title>
+<style>
+  :root{
+    --bg:#0b1724;--panel:#12243a;--panel2:#183050;--text:#e6eef7;--muted:#9fb3c8;
+    --accent:#3fa9f5;--go:#2ecc71;--marg:#f1c40f;--nogo:#e74c3c;--border:#24405f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}
+  header{background:linear-gradient(135deg,#0f2e4d,#123a63);padding:20px 16px;border-bottom:1px solid var(--border)}
+  .hwrap{max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+  h1{margin:0;font-size:1.6rem}
+  .sub{color:var(--muted);font-size:.92rem;margin-top:4px}
+  .sub span{color:var(--text);font-weight:600}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:.92rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn:hover{filter:brightness(1.1)}
+  .btn.secondary{background:transparent;border:1px solid var(--accent);color:var(--accent)}
+  .btn.small{padding:5px 10px;font-size:.8rem}
+  .btn:disabled{opacity:.5;cursor:wait}
+  main{max-width:1200px;margin:0 auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;min-width:0}
+  .card.wide{grid-column:1/-1}
+  .card h2{margin:0 0 12px;font-size:1.1rem;color:var(--accent);display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .err{border-color:var(--nogo);background:#2a1418}
+  .err h2{color:var(--nogo)}
+  table{width:100%;border-collapse:collapse;font-size:.92rem}
+  th,td{padding:8px 6px;text-align:left;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.03em}
+  .tablewrap{overflow-x:auto}
+  .status-badge{font-size:2.4rem;font-weight:800;text-align:center;padding:14px;border-radius:10px;margin-bottom:12px;letter-spacing:.05em}
+  .s-GO{background:rgba(46,204,113,.15);color:var(--go);border:2px solid var(--go)}
+  .s-MARGINAL{background:rgba(241,196,15,.15);color:var(--marg);border:2px solid var(--marg)}
+  .s-NO-GO{background:rgba(231,76,60,.15);color:var(--nogo);border:2px solid var(--nogo)}
+  .s-NA{background:rgba(159,179,200,.1);color:var(--muted);border:2px solid var(--muted)}
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .metric{background:var(--panel2);border-radius:8px;padding:10px}
+  .metric .lbl{color:var(--muted);font-size:.78rem;text-transform:uppercase}
+  .metric .val{font-size:1.35rem;font-weight:700}
+  .src{display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--panel2);border-radius:8px;margin-bottom:8px;gap:8px;flex-wrap:wrap}
+  .src .detail{color:var(--muted);font-size:.8rem;width:100%}
+  .ok{color:var(--go)}.warn{color:var(--marg)}.bad{color:var(--nogo)}.muted{color:var(--muted)}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-weight:700;font-size:.85rem}
+  .pill.High{background:rgba(46,204,113,.2);color:var(--go)}
+  .pill.Medium{background:rgba(241,196,15,.2);color:var(--marg)}
+  .pill.Low,.pill.Very\ Low{background:rgba(231,76,60,.2);color:var(--nogo)}
+  .note{font-size:.85rem;color:var(--muted);margin-top:10px}
+  .guidance{background:var(--panel2);border-radius:8px;padding:12px;margin-top:10px}
+  .guidance h3{margin:0 0 6px;font-size:1rem}
+  .guidance ul{margin:6px 0 0;padding-left:18px}
+  .guidance li{margin-bottom:4px}
+  .arrow{display:inline-block;transition:transform .3s}
+  .maps{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
+  .maps iframe{width:100%;height:420px;border:0;border-radius:8px;background:#000}
+  .maps h3{margin:0 0 6px;font-size:.95rem;color:var(--muted)}
+  footer{text-align:center;color:var(--muted);font-size:.8rem;padding:16px}
+  @media (max-width:420px){main{grid-template-columns:1fr}.status-badge{font-size:1.9rem}h1{font-size:1.3rem}}
+</style>
 </head>
-
 <body>
-    <div class="container">
-        <h1 id="title">Lake Massapoag Sailing Dashboard</h1>
-        <div class="meta">
-  Loaded: <span id="loaded"></span>
-
-  <button onclick="location.reload()">
-    Refresh
-  </button>
-
-  <button onclick="window.location.href='forecast.html'">
-    Detailed Forecast
-  </button>
-</div>
-        <div class="card">
-            <h2>Status</h2>
-            <div id="status">Loading...</div>
-        </div>
-        <div class="card">
-            <h2>Race Window Forecast (Today Only: 11:30 AM–3:00 PM)</h2>
-            <table id="forecast">
-                <tr>
-                    <th>Time</th>
-                    <th>Direction</th>
-                    <th>Wind</th>
-                    <th>Gust</th>
-                    <th>Temp</th>
-                    <th>Precip</th>
-                </tr>
-            </table>
-        </div>
-        <div class="card">
-            <h2>Expected Lake Effects</h2>
-            <div id="lake">Loading...</div>
-        </div>
-        <div class="card">
-            <h2>MC Scow Tuning Recommendations</h2>
-            <div id="tuning">Loading...</div>
-        </div>
-        <div class="card">
-            <h2>Radar and Wind Maps</h2>
-            <div class="maps"><iframe
-                    src="https://embed.windy.com/embed2.html?lat=42.123&lon=-71.178&zoom=9&overlay=radar"></iframe><iframe
-                    src="https://embed.windy.com/embed2.html?lat=42.123&lon=-71.178&zoom=9&overlay=wind"></iframe></div>
-        </div>
+<header>
+  <div class="hwrap">
+    <div>
+      <h1>⛵ Lake Massapoag Sailing Dashboard</h1>
+      <div class="sub">Sharon, Massachusetts · 42.123, -71.178</div>
+      <div class="sub">Race Date: <span id="raceDate">—</span> · Race Window: <span id="raceWindow">—</span></div>
+      <div class="sub">Last Refresh: <span id="lastRefresh">—</span></div>
     </div>
-    <script>const now = new Date(); document.getElementById('loaded').textContent = now.toLocaleString(); document.getElementById('title').textContent = 'Lake Massapoag Sailing Dashboard - Race Date: ' + now.toLocaleDateString(); const lat = 42.123, lon = -71.178; const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']; const dir = d => dirs[Math.round(d / 22.5) % 16]; Promise.all([fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&forecast_days=1&hourly=temperature_2m,precipitation_probability,wind_speed_10m,wind_gusts_10m,wind_direction_10m&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=America/New_York`).then(r => r.json()), fetch(`https://api.weather.gov/points/${lat},${lon}`).then(r => r.json()).then(p => fetch(p.properties.forecastHourly).then(r => r.json())).catch(() => null)]).then(([om, nws]) => { const tbl = document.getElementById('forecast'); const today = new Date().toLocaleDateString('en-CA'); let idx = []; for (let i = 0; i < om.hourly.time.length; i++) { const dt = new Date(om.hourly.time[i]); if (dt.toLocaleDateString('en-CA') === today) { const h = dt.getHours() + dt.getMinutes() / 60; if (h >= 11.5 && h <= 15) idx.push(i); } } let avg = 0, maxG = 0, maxP = 0, firstDir = 'SW'; idx.forEach(i => { avg += om.hourly.wind_speed_10m[i]; maxG = Math.max(maxG, om.hourly.wind_gusts_10m[i]); maxP = Math.max(maxP, om.hourly.precipitation_probability[i] || 0); firstDir = dir(om.hourly.wind_direction_10m[i]); tbl.innerHTML += `<tr><td>${new Date(om.hourly.time[i]).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td><td>${dir(om.hourly.wind_direction_10m[i])}</td><td>${om.hourly.wind_speed_10m[i].toFixed(1)} mph</td><td>${om.hourly.wind_gusts_10m[i].toFixed(1)} mph</td><td>${Math.round(om.hourly.temperature_2m[i])}°F</td><td>${om.hourly.precipitation_probability[i] || 0}%</td></tr>` }); avg = idx.length ? avg / idx.length : 0; let nwsText = 'NWS hourly unavailable'; if (nws?.properties?.periods?.length) { const p = nws.properties.periods[0]; nwsText = `NWS Reference: ${p.windSpeed} ${p.windDirection}`; } let cls = 'good', status = 'GO'; if (avg>20 || maxG > 25 || maxP > 80) { status = 'NO-GO'; cls = 'bad'; } else if (maxG > 20 || maxP > 50) { status = 'MARGINAL'; cls = 'warn'; } document.getElementById('status').innerHTML = `<h3 class="${cls}">${status}</h3><p>Race-window average wind: ${avg.toFixed(1)} mph</p><p>Max gust: ${maxG.toFixed(1)} mph</p><p>${nwsText}</p><p>Consensus: Open-Meteo forecast with NWS validation.</p>`; let lake = ''; if (avg < 4) { lake = 'Very light-air conditions. Thermal circulations and shoreline effects dominate. Expect major oscillations, soft spots, and migrating pressure lines.'; } else if (firstDir.includes('SW') || firstDir.includes('SSW') || firstDir === 'S') { lake = 'South to southwest flow often creates uneven pressure on Massapoag, with stronger bands crossing the center and shifts near shorelines.'; } else if (firstDir.startsWith('W')) { lake = 'Westerly flow generally produces the most reliable racing breeze with pressure strongest through the center of the lake.'; } else { lake = 'Expect significant shoreline bending and localized velocity differences.'; } document.getElementById('lake').innerHTML = lake; let tune = ''; if (avg < 4) { tune = '<ul><li>Maximum power setup</li><li>Outhaul eased</li><li>Vang off</li><li>Cunningham off</li><li>Crew forward</li></ul>'; } else if (avg < 8) { tune = '<ul><li>Full power</li><li>Light vang</li><li>Traveler centered</li></ul>'; } else if (avg < 14) { tune = '<ul><li>Base tuning</li><li>Moderate vang</li><li>Flat trim</li></ul>'; } else if (avg < 20) { tune = '<ul><li>Depower gradually</li><li>Increase control tension</li><li>Hike hard</li></ul>'; } else { tune = '<ul><li>Heavy-air setup</li><li>Maximum depower</li></ul>'; } document.getElementById('tuning').innerHTML = tune; });</script>
-</body>
+    <div class="btns">
+      <button class="btn" id="refreshBtn" onclick="refreshAll()">⟳ Refresh</button>
+      <a class="btn secondary" href="forecast.html">Detailed Forecast</a>
+    </div>
+  </div>
+</header>
 
+<main>
+  <section class="card" id="sourcesCard">
+    <h2>Data Sources</h2>
+    <div class="src">
+      <div id="omStatus" class="muted">⏳ Open-Meteo Loading…</div>
+      <button class="btn small secondary" onclick="retryOM()">Retry</button>
+      <div class="detail" id="omDetail"></div>
+    </div>
+    <div class="src">
+      <div id="nwsStatus" class="muted">⏳ NWS Loading…</div>
+      <button class="btn small secondary" onclick="retryNWS()">Retry</button>
+      <div class="detail" id="nwsDetail"></div>
+    </div>
+  </section>
+
+  <section class="card" id="statusCard">
+    <h2>Race Status</h2>
+    <div class="status-badge s-NA" id="statusBadge">—</div>
+    <div class="metrics">
+      <div class="metric"><div class="lbl">Max Sustained Wind</div><div class="val" id="mWind">—</div></div>
+      <div class="metric"><div class="lbl">Max Gust</div><div class="val" id="mGust">—</div></div>
+      <div class="metric"><div class="lbl">Max Precipitation</div><div class="val" id="mPrecip">—</div></div>
+      <div class="metric"><div class="lbl">Max Thunder Risk</div><div class="val" id="mThunder">—</div></div>
+    </div>
+  </section>
+
+  <section class="card" id="factorsCard">
+    <h2>Triggering Factors</h2>
+    <table>
+      <thead><tr><th>Factor</th><th>Value</th><th>Assessment</th></tr></thead>
+      <tbody id="factorsBody"><tr><td colspan="3" class="muted">Awaiting data…</td></tr></tbody>
+    </table>
+  </section>
+
+  <section class="card" id="consensusCard">
+    <h2>Wind Consensus</h2>
+    <table>
+      <thead><tr><th>Source</th><th>Direction</th><th>Wind</th></tr></thead>
+      <tbody id="consensusBody"><tr><td colspan="3" class="muted">Awaiting data…</td></tr></tbody>
+    </table>
+    <div style="margin-top:12px">Confidence: <span class="pill" id="confidence">—</span></div>
+    <div class="note" id="consensusNote"></div>
+  </section>
+
+  <section class="card wide" id="errorCard" style="display:none"></section>
+
+  <section class="card wide">
+    <h2>Race Window Forecast <span class="muted" style="font-size:.8rem;font-weight:400">Source: Open-Meteo</span></h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Time</th><th>Direction</th><th>Wind</th><th>Gust</th><th>Temperature</th><th>Precipitation</th><th>Thunder</th></tr></thead>
+        <tbody id="forecastBody"><tr><td colspan="7" class="muted">Awaiting data…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" id="lakeCard">
+    <h2>Lake Massapoag Effects</h2>
+    <div>Lake Effect Confidence: <span class="pill" id="lakeConf">—</span></div>
+    <div class="guidance" id="lakeGuidance"><span class="muted">Awaiting data…</span></div>
+  </section>
+
+  <section class="card" id="tuningCard">
+    <h2>MC Scow Tuning</h2>
+    <table><tbody id="tuningBody"><tr><td class="muted">Awaiting data…</td></tr></tbody></table>
+    <div class="note" id="tuningNote"></div>
+  </section>
+
+  <section class="card wide">
+    <h2>Maps</h2>
+    <div class="maps">
+      <div>
+        <h3>Windy Radar</h3>
+        <iframe title="Windy Radar" loading="lazy" src="https://embed.windy.com/embed2.html?lat=42.123&lon=-71.178&detailLat=42.123&detailLon=-71.178&width=650&height=420&zoom=9&level=surface&overlay=radar&product=radar&menu=&message=&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=mph&metricTemp=%C2%B0F&radarRange=-1"></iframe>
+      </div>
+      <div>
+        <h3>Windy Wind</h3>
+        <iframe title="Windy Wind" loading="lazy" src="https://embed.windy.com/embed2.html?lat=42.123&lon=-71.178&detailLat=42.123&detailLon=-71.178&width=650&height=420&zoom=10&level=surface&overlay=wind&product=ecmwf&menu=&message=&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=mph&metricTemp=%C2%B0F&radarRange=-1"></iframe>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>Forecast data: Open-Meteo &amp; National Weather Service. Always use your own judgment on the water.</footer>
+
+<script>
+"use strict";
+
+const LAT = 42.123;
+const LON = -71.178;
+const TZ = "America/New_York";
+/* Race window depends on the day of week (America/New_York):
+   Monday–Thursday: 6:00 PM – 9:00 PM
+   Friday–Sunday:   12:00 PM – 4:00 PM */
+const WEEKDAY_HOURS = [18, 19, 20, 21];
+const WEEKEND_HOURS = [12, 13, 14, 15, 16];
+
+function nyWeekday(date = new Date()) {
+  return new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" }).format(date);
+}
+
+function getRaceHours(date = new Date()) {
+  return ["Fri", "Sat", "Sun"].includes(nyWeekday(date)) ? WEEKEND_HOURS : WEEKDAY_HOURS;
+}
+
+function raceWindowLabel(date = new Date()) {
+  const h = getRaceHours(date);
+  return `${hourLabel(h[0])} – ${hourLabel(h[h.length - 1])}`;
+}
+
+const THRESHOLDS = {
+  wind:    { go: 15, marg: 20 },
+  gust:    { go: 20, marg: 25 },
+  precip:  { go: 50, marg: 80 },
+  thunder: { go: 20, marg: 50 }
+};
+
+const state = { om: null, nws: null, omErr: null, nwsErr: null, omLoading: false, nwsLoading: false };
+
+/* ---------- Utilities ---------- */
+
+function nyParts(date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+  }).formatToParts(date);
+  const get = t => (parts.find(p => p.type === t) || {}).value;
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, hour: parseInt(get("hour"), 10) % 24, minute: parseInt(get("minute"), 10) };
+}
+
+function todayNY() { return nyParts(new Date()).date; }
+
+function hourLabel(h) {
+  const suffix = h >= 12 ? "PM" : "AM";
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return `${hh}:00 ${suffix}`;
+}
+
+const COMPASS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+
+function degToCompass(d) {
+  if (d == null || isNaN(d)) return "—";
+  return COMPASS[Math.round(normDeg(d) / 22.5) % 16];
+}
+
+function compassToDeg(s) {
+  if (!s) return null;
+  const i = COMPASS.indexOf(String(s).trim().toUpperCase());
+  return i < 0 ? null : i * 22.5;
+}
+
+function normDeg(d) { return ((d % 360) + 360) % 360; }
+
+function angDiff(a, b) { return Math.abs(((a - b + 540) % 360) - 180); }
+
+/* Proper circular (vector) mean of compass directions. Optional weights. */
+function vectorMeanDir(dirs, weights) {
+  let x = 0, y = 0, n = 0;
+  dirs.forEach((d, i) => {
+    if (d == null || isNaN(d)) return;
+    const w = weights && weights[i] != null && !isNaN(weights[i]) ? Math.max(weights[i], 0.0001) : 1;
+    const r = d * Math.PI / 180;
+    x += Math.sin(r) * w;
+    y += Math.cos(r) * w;
+    n++;
+  });
+  if (n === 0) return null;
+  if (Math.hypot(x, y) < 1e-9) return null;
+  return normDeg(Math.atan2(x, y) * 180 / Math.PI);
+}
+
+function mean(arr) {
+  const v = arr.filter(x => x != null && !isNaN(x));
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+
+function maxOf(arr) {
+  const v = arr.filter(x => x != null && !isNaN(x));
+  return v.length ? Math.max(...v) : null;
+}
+
+function fmt(v, unit, digits = 0) {
+  return v == null || isNaN(v) ? "—" : `${Number(v).toFixed(digits)}${unit}`;
+}
+
+function dirHTML(d) {
+  if (d == null || isNaN(d)) return "—";
+  return `<span class="arrow" style="transform:rotate(${Math.round(d) + 180}deg)">↑</span> ${degToCompass(d)} (${Math.round(d)}°)`;
+}
+
+async function fetchJSON(url, opts = {}, timeoutMs = 15000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...opts, signal: ctrl.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    return await res.json();
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("Request timed out");
+    throw e;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/* ---------- Thunder estimation ---------- */
+
+function omThunder(code, precip) {
+  const p = precip == null ? 0 : precip;
+  if (code === 95) return Math.max(p, 40);
+  if (code === 96 || code === 99) return Math.max(p, 70);
+  return 0;
+}
+
+function nwsThunder(shortForecast, precip) {
+  if (!shortForecast || !/thunder|t-storm|tstorm/i.test(shortForecast)) return 0;
+  const p = precip == null ? 0 : precip;
+  if (/slight chance/i.test(shortForecast)) return Math.max(Math.min(p, 20), 10);
+  if (/chance/i.test(shortForecast)) return Math.max(p, 30);
+  if (/likely/i.test(shortForecast)) return Math.max(p, 60);
+  return Math.max(p, 50);
+}
+
+/* ---------- Race window filtering ---------- */
+
+function filterRaceWindow(rows, label) {
+  const today = todayNY();
+  const raceHours = getRaceHours();
+  const seen = new Set();
+  const out = rows
+    .filter(r => r && r.date === today && r.minute === 0 && raceHours.includes(r.hour))
+    .filter(r => { if (seen.has(r.hour)) return false; seen.add(r.hour); return true; })
+    .sort((a, b) => a.hour - b.hour);
+  console.log(`[${label}] Selected race-window rows (${today}):`, out);
+  return out;
+}
+
+/* ---------- Open-Meteo ---------- */
+
+async function loadOpenMeteo() {
+  const params = new URLSearchParams({
+    latitude: LAT, longitude: LON,
+    hourly: "temperature_2m,precipitation_probability,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code",
+    forecast_days: "1",
+    timezone: TZ,
+    temperature_unit: "fahrenheit",
+    wind_speed_unit: "mph"
+  });
+  const data = await fetchJSON(`https://api.open-meteo.com/v1/forecast?${params}`);
+  const h = data && data.hourly;
+  if (!h || !Array.isArray(h.time)) throw new Error("Malformed Open-Meteo response");
+  const rows = h.time.map((t, i) => {
+    const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/.exec(t);
+    if (!m) return null;
+    const precip = h.precipitation_probability ? h.precipitation_probability[i] : null;
+    const code = h.weather_code ? h.weather_code[i] : null;
+    return {
+      date: m[1], hour: parseInt(m[2], 10), minute: parseInt(m[3], 10),
+      time: hourLabel(parseInt(m[2], 10)),
+      dir: h.wind_direction_10m[i], wind: h.wind_speed_10m[i], gust: h.wind_gusts_10m[i],
+      temp: h.temperature_2m[i], precip, code, thunder: omThunder(code, precip)
+    };
+  });
+  const win = filterRaceWindow(rows, "Open-Meteo");
+  if (!win.length) throw new Error("No race-window rows for today");
+  return win;
+}
+
+/* ---------- NWS ---------- */
+
+async function loadNWS() {
+  const headers = { Accept: "application/geo+json" };
+  const pt = await fetchJSON(`https://api.weather.gov/points/${LAT},${LON}`, { headers });
+  const url = pt && pt.properties && pt.properties.forecastHourly;
+  if (!url) throw new Error("No forecastHourly URL in NWS points response");
+  const fc = await fetchJSON(url, { headers });
+  const periods = fc && fc.properties && fc.properties.periods;
+  if (!Array.isArray(periods)) throw new Error("Malformed NWS hourly response");
+  const rows = periods.map(p => {
+    const d = new Date(p.startTime);
+    if (isNaN(d)) return null;
+    const np = nyParts(d);
+    const speeds = String(p.windSpeed || "").match(/\d+(\.\d+)?/g);
+    const wind = speeds ? Math.max(...speeds.map(Number)) : null;
+    let gust = null;
+    if (p.windGust) {
+      const g = String(typeof p.windGust === "object" ? p.windGust.value : p.windGust).match(/\d+(\.\d+)?/g);
+      gust = g ? Math.max(...g.map(Number)) : null;
+    }
+    const precip = p.probabilityOfPrecipitation ? p.probabilityOfPrecipitation.value : null;
+    let temp = p.temperature;
+    if (p.temperatureUnit === "C" && temp != null) temp = temp * 9 / 5 + 32;
+    return {
+      date: np.date, hour: np.hour, minute: np.minute, time: hourLabel(np.hour),
+      dir: compassToDeg(p.windDirection), dirText: p.windDirection, wind, gust, temp,
+      precip: precip == null ? 0 : precip, short: p.shortForecast,
+      thunder: nwsThunder(p.shortForecast, precip)
+    };
+  });
+  const win = filterRaceWindow(rows, "NWS");
+  if (!win.length) throw new Error("No NWS race-window rows for today");
+  return win;
+}
+
+/* ---------- Status logic ---------- */
+
+function classify(value, t) {
+  if (value == null || isNaN(value)) return "GO";
+  if (value <= t.go) return "GO";
+  if (value <= t.marg) return "MARGINAL";
+  return "NO-GO";
+}
+
+const RANK = { "GO": 0, "MARGINAL": 1, "NO-GO": 2 };
+
+function overallStatus(m) {
+  const levels = [
+    classify(m.wind, THRESHOLDS.wind),
+    classify(m.gust, THRESHOLDS.gust),
+    classify(m.precip, THRESHOLDS.precip),
+    classify(m.thunder, THRESHOLDS.thunder)
+  ];
+  return levels.reduce((a, b) => RANK[b] > RANK[a] ? b : a, "GO");
+}
+
+/* ---------- Lake & tuning ---------- */
+
+function lakeConfidence(speed) {
+  if (speed == null) return null;
+  if (speed < 2) return "Very Low";
+  if (speed < 4) return "Low";
+  if (speed <= 8) return "Medium";
+  return "High";
+}
+
+function lakeMode(speed, dir) {
+  if (speed == null) return null;
+  if (speed < 4 || dir == null) {
+    return { name: "Thermal Mode", tips: [
+      "Pressure is patchy and driven by local heating — keep your head out of the boat and sail to the dark water.",
+      "Expect the breeze to fill from the shoreline that warms first; sunny afternoon shores often draw in a light onshore puff.",
+      "Avoid wind shadows near the wooded shorelines; stay in open water where the puffs connect.",
+      "Prioritize boat speed and clear air over small shifts; a good start in pressure is worth more than tactics.",
+      "Watch for sudden direction swings of 30°+ — be ready to tack on big headers rather than waiting."
+    ]};
+  }
+  if (dir >= 180 && dir < 240) {
+    return { name: "South-Southwest Mode", tips: [
+      "Typical warm-season gradient; often the most consistent breeze on the lake.",
+      "Puffs tend to arrive from the southwest — look upwind for lines of darker water.",
+      "Expect a slight right-hand bias as the breeze bends along the southern shoreline; check with compass at the line.",
+      "Shifts are moderate and oscillating — tack on headers and stay near the middle of the course.",
+      "Gusts can build in mid-afternoon as heating peaks; plan to depower progressively through the race window."
+    ]};
+  }
+  if (dir >= 240 && dir < 300) {
+    return { name: "Westerly Mode", tips: [
+      "Westerlies come off land and tend to be puffy and shifty with big velocity variation.",
+      "Expect large oscillating shifts (15–25°); sail the lifted tack and stay in phase.",
+      "Wind shadows near the upwind (western) shore — avoid getting pinned too close to it.",
+      "Puffs fan out as they hit the water: ride the lifted side of each puff.",
+      "Keep the boat flat in the gusts — ease the traveler and vang rather than pinching."
+    ]};
+  }
+  if (dir >= 300 || dir < 45) {
+    return { name: "Northerly Mode", tips: [
+      "Post-frontal northerlies are typically cool, gusty, and very shifty.",
+      "Expect sharp gusts with significant direction changes — look upwind constantly.",
+      "Velocity matters more than angle: connect the puffs and sail extra distance to stay in pressure.",
+      "Wind can be lighter close to the northern shoreline; avoid the extreme corners.",
+      "Have depower controls pre-set before the start — gusts can be well above the average."
+    ]};
+  }
+  return { name: "Easterly Mode", tips: [
+    "Easterly/southeasterly flow is less common and often accompanies damp or unsettled weather.",
+    "Breeze tends to be steadier but can be lighter and more oceanic in feel.",
+    "Watch for persistent shifts as the gradient backs or veers; play the side the breeze is trending toward.",
+    "Check the sky upwind for approaching precipitation that can alter pressure suddenly.",
+    "Keep an eye on the radar — easterlies can precede incoming systems."
+  ]};
+}
+
+function scowTuning(speed) {
+  if (speed == null) return null;
+  if (speed < 4) return {
+    mode: "Maximum Power",
+    rake: "Minimal rake — mast upright / forward",
+    vang: "Off — just remove slack",
+    cunningham: "Off — wrinkles OK in luff",
+    outhaul: "Eased 2–3 in. for full, deep foot",
+    traveler: "Centered / slightly to windward",
+    crew: "Forward and to leeward; heel the boat for lift and reduced wetted area"
+  };
+  if (speed < 8) return {
+    mode: "Full Power",
+    rake: "Neutral / light-air base rake",
+    vang: "Snug — remove slack only",
+    cunningham: "Off",
+    outhaul: "Eased 1–2 in.",
+    traveler: "Centered",
+    crew: "Forward, weight inboard; keep a slight leeward heel"
+  };
+  if (speed < 14) return {
+    mode: "Base Setup",
+    rake: "Base rake",
+    vang: "Firm — set going around leeward mark",
+    cunningham: "Light tension to remove large wrinkles",
+    outhaul: "About 1 in. off max",
+    traveler: "Centered; ease slightly in puffs",
+    crew: "Hiking, positioned mid-cockpit; keep the boat flat on its chine"
+  };
+  if (speed <= 20) return {
+    mode: "Depower",
+    rake: "Increased rake aft",
+    vang: "Hard — bend the mast to flatten the sail",
+    cunningham: "Hard — pull draft forward and open the leech",
+    outhaul: "Max — foot fully flat",
+    traveler: "Eased down; play actively in gusts",
+    crew: "Full hike, slide aft; keep the boat flat at all costs"
+  };
+  return {
+    mode: "Heavy Air",
+    rake: "Maximum rake",
+    vang: "Maximum (block-to-block)",
+    cunningham: "Maximum",
+    outhaul: "Maximum",
+    traveler: "All the way down",
+    crew: "Max hike, far aft; consider staying ashore — conditions exceed recommended limits"
+  };
+}
+
+/* ---------- Rendering ---------- */
+
+function renderSources() {
+  const om = document.getElementById("omStatus");
+  const omD = document.getElementById("omDetail");
+  if (state.omLoading) { om.className = "muted"; om.textContent = "⏳ Open-Meteo Loading…"; omD.textContent = ""; }
+  else if (state.omErr) { om.className = "bad"; om.textContent = "❌ Open-Meteo Failed"; omD.textContent = state.omErr; }
+  else if (state.om) { om.className = "ok"; om.textContent = "✅ Open-Meteo Connected"; omD.textContent = `${state.om.length} race-window hours loaded`; }
+
+  const n = document.getElementById("nwsStatus");
+  const nD = document.getElementById("nwsDetail");
+  if (state.nwsLoading) { n.className = "muted"; n.textContent = "⏳ NWS Loading…"; nD.textContent = ""; }
+  else if (state.nwsErr) { n.className = "bad"; n.textContent = "❌ NWS Unavailable — Consensus Degraded"; nD.textContent = state.nwsErr; }
+  else if (state.nws) { n.className = "ok"; n.textContent = "✅ NWS Connected"; nD.textContent = `${state.nws.length} race-window hours loaded`; }
+}
+
+function renderError() {
+  const card = document.getElementById("errorCard");
+  if (state.omErr) {
+    card.style.display = "";
+    card.className = "card wide err";
+    card.innerHTML = `<h2>Open-Meteo Error <button class="btn small" onclick="retryOM()">Retry Open-Meteo</button></h2>
+      <div>Primary forecast data could not be loaded: <strong>${escapeHTML(state.omErr)}</strong></div>
+      <div class="note">Race status, forecast table, and tuning guidance require Open-Meteo data.${state.nws ? " NWS data is shown in the consensus card where available." : ""}</div>`;
+  } else {
+    card.style.display = "none";
+    card.innerHTML = "";
+  }
+}
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function computeConsensus() {
+  const om = state.om, nws = state.nws;
+  const omDir = om ? vectorMeanDir(om.map(r => r.dir), om.map(r => r.wind)) : null;
+  const omWind = om ? mean(om.map(r => r.wind)) : null;
+  const nwsDir = nws ? vectorMeanDir(nws.map(r => r.dir), nws.map(r => r.wind)) : null;
+  const nwsWind = nws ? mean(nws.map(r => r.wind)) : null;
+
+  let conDir = null, conWind = null, confidence = "Low", degraded = false;
+  if (omDir != null && nwsDir != null) {
+    conDir = vectorMeanDir([omDir, nwsDir]);
+    conWind = mean([omWind, nwsWind]);
+    const dd = angDiff(omDir, nwsDir);
+    const sd = Math.abs(omWind - nwsWind);
+    if (dd <= 30 && sd <= 3) confidence = "High";
+    else if (dd <= 60 && sd <= 6) confidence = "Medium";
+    else confidence = "Low";
+  } else {
+    degraded = true;
+    conDir = omDir != null ? omDir : nwsDir;
+    conWind = omWind != null ? omWind : nwsWind;
+    confidence = "Low";
+  }
+
+  console.log("[Consensus] Open-Meteo direction:", omDir == null ? null : `${omDir.toFixed(1)}° (${degToCompass(omDir)})`, "wind:", omWind);
+  console.log("[Consensus] NWS direction:", nwsDir == null ? null : `${nwsDir.toFixed(1)}° (${degToCompass(nwsDir)})`, "wind:", nwsWind);
+  console.log("[Consensus] Consensus direction:", conDir == null ? null : `${conDir.toFixed(1)}° (${degToCompass(conDir)})`, "wind:", conWind);
+  console.log("[Consensus] Confidence level:", confidence, degraded ? "(degraded)" : "");
+
+  return { omDir, omWind, nwsDir, nwsWind, conDir, conWind, confidence, degraded };
+}
+
+function renderConsensus(c) {
+  const row = (name, d, w, avail) => `<tr><td>${name}</td><td>${avail ? dirHTML(d) : '<span class="bad">Unavailable</span>'}</td><td>${avail ? fmt(w, " mph", 1) : "—"}</td></tr>`;
+  document.getElementById("consensusBody").innerHTML =
+    row("Open-Meteo", c.omDir, c.omWind, !!state.om) +
+    row("NWS", c.nwsDir, c.nwsWind, !!state.nws) +
+    `<tr style="font-weight:700"><td>Consensus</td><td>${dirHTML(c.conDir)}</td><td>${fmt(c.conWind, " mph", 1)}</td></tr>`;
+  const conf = document.getElementById("confidence");
+  conf.className = `pill ${c.confidence}`;
+  conf.textContent = c.confidence;
+  const note = document.getElementById("consensusNote");
+  if (c.degraded) {
+    note.innerHTML = `<span class="warn">⚠ ${!state.nws ? "NWS Unavailable" : "Open-Meteo Unavailable"} — Consensus Degraded</span> <button class="btn small secondary" onclick="${!state.nws ? "retryNWS()" : "retryOM()"}">Retry</button>`;
+  } else if (c.omDir != null && c.nwsDir != null) {
+    note.textContent = `Direction spread: ${Math.round(angDiff(c.omDir, c.nwsDir))}° · Speed spread: ${Math.abs(c.omWind - c.nwsWind).toFixed(1)} mph (vector-averaged directions).`;
+  } else {
+    note.textContent = "";
+  }
+}
+
+function renderStatus() {
+  const badge = document.getElementById("statusBadge");
+  if (!state.om) {
+    badge.className = "status-badge s-NA";
+    badge.textContent = state.omLoading ? "…" : "UNAVAILABLE";
+    ["mWind", "mGust", "mPrecip", "mThunder"].forEach(id => document.getElementById(id).textContent = "—");
+    document.getElementById("factorsBody").innerHTML = `<tr><td colspan="3" class="muted">${state.omLoading ? "Awaiting data…" : "Open-Meteo data unavailable"}</td></tr>`;
+    return;
+  }
+  const om = state.om, nws = state.nws || [];
+  const m = {
+    wind: maxOf([...om.map(r => r.wind), ...nws.map(r => r.wind)]),
+    gust: maxOf([...om.map(r => r.gust), ...nws.map(r => r.gust)]),
+    precip: maxOf([...om.map(r => r.precip), ...nws.map(r => r.precip)]),
+    thunder: maxOf([...om.map(r => r.thunder), ...nws.map(r => r.thunder)])
+  };
+  const status = overallStatus(m);
+  badge.className = `status-badge s-${status}`;
+  badge.textContent = status;
+  document.getElementById("mWind").textContent = fmt(m.wind, " mph", 1);
+  document.getElementById("mGust").textContent = fmt(m.gust, " mph", 1);
+  document.getElementById("mPrecip").textContent = fmt(m.precip, "%");
+  document.getElementById("mThunder").textContent = fmt(m.thunder, "%");
+
+  const factor = (name, v, unit, t) => {
+    const lvl = classify(v, t);
+    const txt = lvl === "GO" ? '<span class="ok">✅ Within Limits</span>'
+      : lvl === "MARGINAL" ? '<span class="warn">⚠ Exceeds GO Threshold</span>'
+      : '<span class="bad">❌ Exceeds NO-GO Threshold</span>';
+    return `<tr><td>${name}</td><td>${fmt(v, unit, unit === "%" ? 0 : 1)}</td><td>${txt}</td></tr>`;
+  };
+  document.getElementById("factorsBody").innerHTML =
+    factor("Sustained Wind", m.wind, " mph", THRESHOLDS.wind) +
+    factor("Gusts", m.gust, " mph", THRESHOLDS.gust) +
+    factor("Precipitation", m.precip, "%", THRESHOLDS.precip) +
+    factor("Thunder", m.thunder, "%", THRESHOLDS.thunder);
+}
+
+function renderTable() {
+  const body = document.getElementById("forecastBody");
+  if (!state.om) {
+    body.innerHTML = `<tr><td colspan="7" class="muted">${state.omLoading ? "Awaiting data…" : "Open-Meteo data unavailable"}</td></tr>`;
+    return;
+  }
+  const rows = state.om.map(r => ({
+    Time: r.time, Direction: `${degToCompass(r.dir)} (${Math.round(r.dir)}°)`,
+    Wind: fmt(r.wind, " mph", 1), Gust: fmt(r.gust, " mph", 1), Temperature: fmt(r.temp, "°F"),
+    Precipitation: fmt(r.precip, "%"), Thunder: fmt(r.thunder, "%")
+  }));
+  console.log("[Forecast Table] Rows:", rows);
+  console.table(rows);
+  body.innerHTML = state.om.map(r => {
+    const wc = classify(r.wind, THRESHOLDS.wind), gc = classify(r.gust, THRESHOLDS.gust);
+    const pc = classify(r.precip, THRESHOLDS.precip), tc = classify(r.thunder, THRESHOLDS.thunder);
+    const cls = l => l === "GO" ? "" : l === "MARGINAL" ? "warn" : "bad";
+    return `<tr><td><strong>${r.time}</strong></td><td>${dirHTML(r.dir)}</td>
+      <td class="${cls(wc)}">${fmt(r.wind, " mph", 1)}</td><td class="${cls(gc)}">${fmt(r.gust, " mph", 1)}</td>
+      <td>${fmt(r.temp, "°F")}</td><td class="${cls(pc)}">${fmt(r.precip, "%")}</td><td class="${cls(tc)}">${fmt(r.thunder, "%")}</td></tr>`;
+  }).join("");
+}
+
+function renderLake(c) {
+  const confEl = document.getElementById("lakeConf");
+  const g = document.getElementById("lakeGuidance");
+  const conf = lakeConfidence(c.conWind);
+  if (!conf) { confEl.className = "pill"; confEl.textContent = "—"; g.innerHTML = '<span class="muted">No wind data available.</span>'; return; }
+  confEl.className = `pill ${conf}`;
+  confEl.textContent = conf;
+  const mode = lakeMode(c.conWind, c.conDir);
+  g.innerHTML = `<h3>${mode.name}</h3>
+    <div class="muted" style="font-size:.85rem">Consensus: ${degToCompass(c.conDir)} ${c.conDir != null ? `(${Math.round(c.conDir)}°)` : ""} at ${fmt(c.conWind, " mph", 1)}</div>
+    <ul>${mode.tips.map(t => `<li>${t}</li>`).join("")}</ul>`;
+}
+
+function renderTuning(c) {
+  const body = document.getElementById("tuningBody");
+  const t = scowTuning(c.conWind);
+  if (!t) { body.innerHTML = '<tr><td class="muted">No wind data available.</td></tr>'; return; }
+  const rows = [["Mode", `<strong>${t.mode}</strong>`], ["Rake", t.rake], ["Vang", t.vang], ["Cunningham", t.cunningham],
+    ["Outhaul", t.outhaul], ["Traveler", t.traveler], ["Crew Position", t.crew]];
+  body.innerHTML = rows.map(([k, v]) => `<tr><th style="width:34%">${k}</th><td>${v}</td></tr>`).join("");
+  document.getElementById("tuningNote").textContent = `Based on consensus wind of ${fmt(c.conWind, " mph", 1)}. Max gust in window may warrant the next-higher band.`;
+}
+
+function renderAll() {
+  renderSources();
+  renderError();
+  renderStatus();
+  renderTable();
+  const c = computeConsensus();
+  renderConsensus(c);
+  renderLake(c);
+  renderTuning(c);
+}
+
+/* ---------- Loading ---------- */
+
+async function fetchOMState() {
+  state.omLoading = true; state.omErr = null; renderSources();
+  try { state.om = await loadOpenMeteo(); }
+  catch (e) { console.error("[Open-Meteo] Failure:", e); state.om = null; state.omErr = e.message || String(e); }
+  finally { state.omLoading = false; }
+}
+
+async function fetchNWSState() {
+  state.nwsLoading = true; state.nwsErr = null; renderSources();
+  try { state.nws = await loadNWS(); }
+  catch (e) { console.warn("[NWS] Failure — continuing with Open-Meteo:", e); state.nws = null; state.nwsErr = e.message || String(e); }
+  finally { state.nwsLoading = false; }
+}
+
+function stampRefresh() {
+  document.getElementById("raceDate").textContent = new Date().toLocaleDateString("en-US", { timeZone: TZ, weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  document.getElementById("raceWindow").textContent = raceWindowLabel();
+  document.getElementById("lastRefresh").textContent = new Date().toLocaleTimeString("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit", second: "2-digit" }) + " ET";
+}
+
+async function refreshAll() {
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = true;
+  await Promise.all([fetchOMState(), fetchNWSState()]);
+  stampRefresh();
+  renderAll();
+  btn.disabled = false;
+}
+
+async function retryOM() { await fetchOMState(); stampRefresh(); renderAll(); }
+async function retryNWS() { await fetchNWSState(); stampRefresh(); renderAll(); }
+
+/* ---------- Built-in tests ---------- */
+
+function runTests() {
+  const cases = [
+    // GO thresholds
+    { name: "GO: wind 15", m: { wind: 15, gust: 0, precip: 0, thunder: 0 }, expect: "GO" },
+    { name: "GO: gust 20", m: { wind: 0, gust: 20, precip: 0, thunder: 0 }, expect: "GO" },
+    { name: "GO: precip 50", m: { wind: 0, gust: 0, precip: 50, thunder: 0 }, expect: "GO" },
+    { name: "GO: thunder 20", m: { wind: 0, gust: 0, precip: 0, thunder: 20 }, expect: "GO" },
+    { name: "GO: all at limits", m: { wind: 15, gust: 20, precip: 50, thunder: 20 }, expect: "GO" },
+    // MARGINAL thresholds
+    { name: "MARGINAL: wind 15.1", m: { wind: 15.1, gust: 0, precip: 0, thunder: 0 }, expect: "MARGINAL" },
+    { name: "MARGINAL: wind 20", m: { wind: 20, gust: 0, precip: 0, thunder: 0 }, expect: "MARGINAL" },
+    { name: "MARGINAL: gust 21", m: { wind: 0, gust: 21, precip: 0, thunder: 0 }, expect: "MARGINAL" },
+    { name: "MARGINAL: gust 25", m: { wind: 0, gust: 25, precip: 0, thunder: 0 }, expect: "MARGINAL" },
+    { name: "MARGINAL: precip 51", m: { wind: 0, gust: 0, precip: 51, thunder: 0 }, expect: "MARGINAL" },
+    { name: "MARGINAL: precip 80", m: { wind: 0, gust: 0, precip: 80, thunder: 0 }, expect: "MARGINAL" },
+    { name: "MARGINAL: thunder 21", m: { wind: 0, gust: 0, precip: 0, thunder: 21 }, expect: "MARGINAL" },
+    { name: "MARGINAL: thunder 50", m: { wind: 0, gust: 0, precip: 0, thunder: 50 }, expect: "MARGINAL" },
+    // NO-GO thresholds
+    { name: "NO-GO: wind 20.1", m: { wind: 20.1, gust: 0, precip: 0, thunder: 0 }, expect: "NO-GO" },
+    { name: "NO-GO: gust 25.1", m: { wind: 0, gust: 25.1, precip: 0, thunder: 0 }, expect: "NO-GO" },
+    { name: "NO-GO: precip 81", m: { wind: 0, gust: 0, precip: 81, thunder: 0 }, expect: "NO-GO" },
+    { name: "NO-GO: thunder 51", m: { wind: 0, gust: 0, precip: 0, thunder: 51 }, expect: "NO-GO" },
+    { name: "NO-GO: worst factor wins", m: { wind: 10, gust: 18, precip: 30, thunder: 60 }, expect: "NO-GO" }
+  ];
+  let pass = 0;
+  console.group("[Tests] Race status boundary tests");
+  cases.forEach(tc => {
+    const got = overallStatus(tc.m);
+    const ok = got === tc.expect;
+    if (ok) pass++;
+    console[ok ? "log" : "error"](`${ok ? "PASS" : "FAIL"} — ${tc.name}: expected ${tc.expect}, got ${got}`);
+  });
+  const dirTests = [
+    { name: "Vector mean 350° & 10° = North", dirs: [350, 10], expect: 0 },
+    { name: "Vector mean 90° & 180° = 135°", dirs: [90, 180], expect: 135 },
+    { name: "Vector mean 340°, 20°, 0° = North", dirs: [340, 20, 0], expect: 0 }
+  ];
+  dirTests.forEach(tc => {
+    const got = vectorMeanDir(tc.dirs);
+    const ok = got != null && angDiff(got, tc.expect) < 0.01;
+    if (ok) pass++;
+    console[ok ? "log" : "error"](`${ok ? "PASS" : "FAIL"} — ${tc.name}: got ${got == null ? null : got.toFixed(2)}°`);
+  });
+  // Race window by weekday (dates at 17:00 UTC = midday in New York)
+  const windowTests = [
+    { name: "Monday → 6–9 PM", date: "2026-11-23T17:00:00Z", expect: WEEKDAY_HOURS },
+    { name: "Thursday → 6–9 PM", date: "2026-11-26T17:00:00Z", expect: WEEKDAY_HOURS },
+    { name: "Friday → 12–4 PM", date: "2026-11-27T17:00:00Z", expect: WEEKEND_HOURS },
+    { name: "Sunday → 12–4 PM", date: "2026-11-29T17:00:00Z", expect: WEEKEND_HOURS }
+  ];
+  windowTests.forEach(tc => {
+    const got = getRaceHours(new Date(tc.date));
+    const ok = got === tc.expect;
+    if (ok) pass++;
+    console[ok ? "log" : "error"](`${ok ? "PASS" : "FAIL"} — Race window ${tc.name}: got ${raceWindowLabel(new Date(tc.date))}`);
+  });
+  const total = cases.length + dirTests.length + windowTests.length;
+  console.log(`[Tests] ${pass}/${total} passed`);
+  console.groupEnd();
+}
+
+/* ---------- Startup ---------- */
+
+runTests();
+stampRefresh();
+refreshAll();
+</script>
+</body>
 </html>
